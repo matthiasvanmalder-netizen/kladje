@@ -1,0 +1,1415 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#18181B" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#EFEAE0" media="(prefers-color-scheme: light)">
+<meta name="description" content="Kladje: notities, lijstjes en mappen.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}</style>
+<title>Kladje</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: één smalle kolom; mappen bovenaan als tegels, daaronder de stroom kaartjes; invoer onderaan binnen bereik van de duim */
+:root{
+  /* kleuren uit de screenshots: antraciet cape, paarse runen, groenblauw harnas, crème kraag, rode kap */
+  --paper:#EFEAE0;
+  --sheet:#FBF9F4;
+  --ink:#1D1D21;
+  --muted:#6C6A66;
+  --line:#DDD7CB;
+  --hover:#E5DFD3;
+  --marker:#2F6E61;
+  --marker-ink:#FBF9F4;
+  --check:#7B3FB0;
+  --check-ink:#FBF9F4;
+  --toast-action:#C7A3EE;
+  --danger:#A3302B;
+  --danger-ink:#FBF9F4;
+  --done:#A29E96;
+  --shadow:rgba(29,29,33,.08);
+  --scrim:rgba(29,29,33,.35);
+  --display:"Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body:"Atkinson Hyperlegible", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#18181B; --sheet:#232327; --ink:#ECE4D2; --muted:#9C978C; --line:#323238;
+    --hover:#2B2B30; --marker:#3F8F7B; --marker-ink:#0F1A17; --check:#A464E0; --check-ink:#18181B;
+    --toast-action:#6B2FA6; --danger:#E0605A; --danger-ink:#1A0D0C; --done:#67645E; --shadow:rgba(0,0,0,.4); --scrim:rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#18181B; --sheet:#232327; --ink:#ECE4D2; --muted:#9C978C; --line:#323238;
+  --hover:#2B2B30; --marker:#3F8F7B; --marker-ink:#0F1A17; --check:#A464E0; --check-ink:#18181B;
+  --toast-action:#6B2FA6; --danger:#E0605A; --danger-ink:#1A0D0C; --done:#67645E; --shadow:rgba(0,0,0,.4); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+svg{display:block}
+
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* ---------- overzicht en map ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:20px 12px}
+.top-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:700;font-size:36px;letter-spacing:-.025em;line-height:1.05;margin:0;overflow-wrap:anywhere;text-wrap:balance}
+.today{color:var(--muted);font-size:14px;margin:6px 0 0}
+.icon-btn{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none}
+.icon-btn:hover{background:var(--hover)}
+.icon-btn[aria-pressed="true"]{background:var(--marker);color:var(--marker-ink)}
+.danger{color:var(--danger)}
+.search{margin-top:14px}
+.search input{width:100%;height:46px;border-radius:13px;border:1px solid var(--line);background:var(--sheet);padding:0 14px;outline:none}
+.search input:focus{border-color:var(--ink)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-top:14px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--sheet);font-size:14px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:700}
+.f-nav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:-8px 0 10px}
+
+.feed{padding-block:8px 132px;display:flex;flex-direction:column;gap:26px}
+.sec h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:700}
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+.sec-head h2{margin:0}
+.add-in{display:flex;align-items:center;gap:4px;height:34px;padding:0 10px 0 6px;border-radius:11px;color:var(--marker);font-weight:700;font-size:14px}
+.add-in:hover{background:var(--hover)}
+.add-in svg{width:18px;height:18px}
+.sec-empty{display:block;width:100%;padding:16px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);font-size:15px}
+.stack{display:flex;flex-direction:column;gap:10px}
+
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ftile{background:var(--sheet);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:2px;min-height:96px;transition:transform .12s}
+.ftile:active{transform:scale(.98)}
+.ftile svg{color:var(--marker);margin-bottom:auto}
+.ftile strong{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.01em;line-height:1.2;margin-top:10px;overflow-wrap:anywhere}
+.ftile span{font-size:13px;color:var(--muted)}
+.ftile.add{background:transparent;border-style:dashed;color:var(--muted);justify-content:center;align-items:center;gap:6px;font-weight:700;font-size:14px}
+.ftile.add svg{color:var(--muted);margin:0}
+
+/* kaartjes met veegacties */
+.swipe{position:relative}
+.swipe-bg{position:absolute;inset:1px;border-radius:18px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-weight:700;font-size:14px;visibility:hidden}
+.swipe-bg span{display:flex;align-items:center;gap:8px;transition:transform .15s}
+.swipe[data-dir] .swipe-bg{visibility:visible}
+.swipe[data-dir="right"] .swipe-bg{background:var(--marker);color:var(--marker-ink)}
+.swipe[data-dir="left"] .swipe-bg{background:var(--danger);color:var(--danger-ink)}
+.swipe[data-dir="right"] .sw-del,.swipe[data-dir="left"] .sw-pin{visibility:hidden}
+.swipe.armed .swipe-bg span{transform:scale(1.15)}
+.card{position:relative;z-index:1;touch-action:pan-y;background:var(--sheet);border:1px solid var(--line);border-radius:18px;padding:15px 16px;cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:transform .18s ease-out}
+.card:active{transform:scale(.988)}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.card h3{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0;line-height:1.2;min-width:0;overflow-wrap:anywhere}
+.card h3.untitled{color:var(--muted)}
+.card time{font-size:13px;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+.card a{color:var(--marker);font-weight:700;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+.preview{margin:0;color:var(--muted);white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.mini{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.mini li{display:flex;gap:12px;align-items:flex-start}
+.mini span{min-width:0;overflow-wrap:anywhere}
+.mini li.ticked span{color:var(--done);text-decoration:line-through}
+.thumbs{display:flex;gap:6px;align-items:center}
+.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:10px;background:var(--hover)}
+.thumbs span{font-size:13px;color:var(--muted);font-weight:700;padding-left:4px}
+.card-foot{display:flex;gap:6px 14px;font-size:13px;color:var(--muted);flex-wrap:wrap;align-items:center}
+.card-foot .tag{color:var(--ink)}
+.card-foot .fname{display:inline-flex;align-items:center;gap:4px;color:var(--marker);font-weight:700}
+.card-foot .fname svg{width:14px;height:14px}
+
+.cb{position:relative;flex:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--muted);display:grid;place-items:center;margin-top:1px;color:transparent;transition:background .15s,border-color .15s,color .15s}
+.cb::before{content:"";position:absolute;inset:-10px}
+.cb[aria-pressed="true"]{background:var(--check);border-color:var(--check);color:var(--check-ink)}
+.cb svg{width:14px;height:14px}
+
+.example{display:flex;gap:12px;align-items:center;justify-content:space-between;font-size:14px;color:var(--muted);padding:2px 2px 0}
+.example button{font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px;flex:none}
+.hint{font-size:13px;color:var(--muted);text-align:center;margin:-12px 0 0}
+.empty{color:var(--muted);text-align:center;padding:48px 12px}
+.empty strong{display:block;color:var(--ink);font-family:var(--display);font-size:20px;margin-bottom:6px}
+
+.capture{position:fixed;left:0;right:0;bottom:var(--kb,0px);z-index:6;background:linear-gradient(to bottom,transparent,var(--paper) 34%);padding-block:22px calc(12px + env(safe-area-inset-bottom,0px))}
+.capture form{display:flex;gap:8px}
+.capture input{flex:1;min-width:0;height:54px;border-radius:17px;border:1px solid var(--line);background:var(--sheet);padding:0 16px;outline:none;box-shadow:0 8px 24px var(--shadow)}
+.capture input:focus{border-color:var(--ink)}
+.sq{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;flex:none}
+.sq.alt{background:var(--sheet);border:1px solid var(--line);box-shadow:0 8px 24px var(--shadow)}
+.sq.go{background:var(--marker);color:var(--marker-ink);box-shadow:0 8px 24px var(--shadow);touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+
+/* ---------- editor ---------- */
+.ed-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:flex;justify-content:space-between;align-items:center;gap:8px;padding-block:10px}
+.ed-actions{display:flex;gap:4px}
+.back{display:flex;align-items:center;gap:2px;height:42px;padding:0 12px 0 4px;border-radius:13px;font-weight:700;min-width:0}
+.back span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.back:hover{background:var(--hover)}
+.ed-body{padding-block:10px 160px}
+#title{display:block;width:100%;border:0;background:transparent;resize:none;outline:none;font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.15;padding:0;overflow:hidden}
+#title::placeholder,.ln textarea::placeholder{color:var(--done)}
+.ed-meta{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:12px 0 18px}
+.fpick{position:relative;display:inline-flex;align-items:center;max-width:100%}
+.fpick svg{position:absolute;left:10px;width:16px;height:16px;pointer-events:none;color:var(--marker)}
+.fpick select{appearance:none;-webkit-appearance:none;height:32px;max-width:100%;border-radius:999px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font-size:13px;font-weight:700;padding:0 14px 0 32px;cursor:pointer}
+#lines{display:flex;flex-direction:column;gap:8px}
+.ln{display:flex;gap:12px;align-items:flex-start;border-radius:12px}
+.ln-main{flex:1;min-width:0}
+.ln textarea{display:block;width:100%;border:0;background:transparent;resize:none;outline:none;padding:0;line-height:1.5;font-size:17px;overflow:hidden}
+.ln .cb{margin-top:2px}
+.ln.done textarea{color:var(--done);text-decoration:line-through;text-decoration-color:var(--done)}
+.grip{flex:none;width:30px;height:28px;margin:-2px -6px 0 0;display:grid;place-items:center;color:var(--done);touch-action:none;cursor:grab;border-radius:8px}
+.grip svg{width:18px;height:18px}
+.ln.dragging{background:var(--sheet);box-shadow:0 10px 28px var(--shadow);position:relative;z-index:2}
+.ln.dragging .grip{cursor:grabbing;color:var(--ink)}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.link{display:inline-flex;align-items:center;gap:5px;max-width:100%;height:28px;padding:0 10px;border-radius:999px;background:var(--hover);color:var(--marker);font-size:13px;font-weight:700;text-decoration:none}
+.link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link svg{width:14px;height:14px;flex:none}
+.ln.img{position:relative;display:block}
+.img-open{display:block;width:100%}
+.img-open img{display:block;width:100%;max-height:360px;min-height:120px;object-fit:cover;border-radius:14px;background:var(--hover)}
+.img-del{position:absolute;top:8px;right:8px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center}
+.img-del svg{width:18px;height:18px}
+
+.tools{position:fixed;left:0;right:0;bottom:var(--kb,0px);z-index:6;background:var(--sheet);border-top:1px solid var(--line);padding-block:8px calc(8px + env(safe-area-inset-bottom,0px))}
+.tools .wrap{display:flex;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none}
+.tools .wrap::-webkit-scrollbar{display:none}
+.tool{flex:none;height:42px;padding:0 14px;border-radius:13px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;background:var(--hover)}
+.tool.icon{padding:0 11px}
+.tool svg{width:20px;height:20px}
+.tool[aria-pressed="true"]{background:var(--marker);color:var(--marker-ink)}
+
+/* ---------- foto groot bekijken ---------- */
+.viewer{position:fixed;inset:0;z-index:45;background:#000;display:flex;align-items:center;justify-content:center;padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain}
+.viewer .img-del{top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px))}
+
+/* ---------- onderblad voor een naam ---------- */
+.scrim{position:fixed;inset:0;z-index:30;background:var(--scrim);display:flex;align-items:flex-end;justify-content:center;padding-bottom:var(--kb,0px)}
+.sheet{width:100%;max-width:560px;background:var(--sheet);border-radius:22px 22px 0 0;display:flex;flex-direction:column;gap:12px;padding-block:22px calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet h2{font-family:var(--display);font-size:22px;font-weight:700;margin:0}
+.sheet input{height:50px;border-radius:14px;border:1px solid var(--line);background:var(--paper);padding:0 14px;outline:none}
+.sheet input:focus{border-color:var(--ink)}
+.sheet-err{color:var(--danger);font-size:14px;margin:0}
+.sheet-btns{display:flex;gap:8px;justify-content:flex-end}
+.btn{height:46px;padding:0 18px;border-radius:13px;font-weight:700}
+.btn.primary{background:var(--marker);color:var(--marker-ink)}
+.btn.ghost{background:var(--hover)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--kb,0px) + 96px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--ink);color:var(--paper);border-radius:14px;padding:12px 16px;display:flex;gap:16px;align-items:center;font-size:15px;box-shadow:0 10px 30px var(--shadow);width:max-content;max-width:calc(100% - 32px)}
+.toast button{color:var(--toast-action);font-weight:700;flex:none}
+
+/* ---------- menu: exporteren en importeren ---------- */
+.top-btns{display:flex;gap:4px}
+.sheet p{margin:0;color:var(--muted)}
+.menu-item{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;background:var(--paper)}
+.menu-item:hover{background:var(--hover)}
+.menu-item svg{flex:none;color:var(--marker);margin-top:1px}
+.menu-item strong{display:block}
+.menu-item small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.btn.danger-btn{background:var(--danger);color:var(--danger-ink)}
+
+/* ---------- privé: pinklavier ---------- */
+.pin{position:fixed;inset:0;z-index:40;background:var(--paper);display:flex;align-items:center;justify-content:center;overflow-y:auto;padding-block:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pin-inner{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:340px}
+.pin-ico{width:52px;height:52px;border-radius:16px;background:var(--sheet);border:1px solid var(--line);display:grid;place-items:center;color:var(--check)}
+.pin h2{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:-.02em;margin:4px 0 0}
+.pin-text{margin:0;color:var(--muted);text-wrap:balance}
+.dots{display:flex;gap:18px;margin-top:10px}
+.dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--muted);transition:background .12s,border-color .12s}
+.dot.on{background:var(--check);border-color:var(--check)}
+.dots.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.pin-err{color:var(--danger);font-size:15px;min-height:1.45em;margin:0}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px 24px;margin-top:4px}
+.key{width:72px;height:72px;border-radius:50%;background:var(--sheet);border:1px solid var(--line);font-family:var(--display);font-size:28px;font-weight:600;display:grid;place-items:center;text-align:center;touch-action:manipulation}
+.key:active{background:var(--hover)}
+.key.ghost{background:transparent;border-color:transparent;font-family:var(--body);font-size:14px;font-weight:700;color:var(--muted)}
+.key svg{width:26px;height:26px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="home">
+  <header class="top">
+    <div class="wrap">
+      <div class="top-row">
+        <div>
+          <h1>Kladje</h1>
+          <p class="today" id="today"></p>
+        </div>
+        <div class="top-btns">
+          <button type="button" class="icon-btn" id="searchBtn" aria-pressed="false" aria-label="Zoeken"></button>
+          <button type="button" class="icon-btn" id="menuBtn" aria-label="Meer"></button>
+        </div>
+      </div>
+      <div class="search" id="searchRow" hidden>
+        <input id="q" type="search" placeholder="Zoek in alles" autocomplete="off" enterkeyhint="search">
+      </div>
+      <nav class="chips" id="chips" aria-label="Filter"></nav>
+    </div>
+  </header>
+  <main class="wrap feed" id="feed"></main>
+</div>
+
+<div id="folderView" hidden>
+  <header class="top">
+    <div class="wrap">
+      <div class="f-nav">
+        <button type="button" class="back" id="fBack"></button>
+        <div class="ed-actions">
+          <button type="button" class="icon-btn" id="fRename" aria-label="Naam van de map wijzigen"></button>
+          <button type="button" class="icon-btn danger" id="fDel" aria-label="Map verwijderen"></button>
+        </div>
+      </div>
+      <h1 id="fTitle"></h1>
+      <p class="today" id="fCount"></p>
+    </div>
+  </header>
+  <main class="wrap feed" id="folderFeed"></main>
+</div>
+
+<div id="vaultView" hidden>
+  <header class="top">
+    <div class="wrap">
+      <div class="f-nav">
+        <button type="button" class="back" id="vLock"></button>
+      </div>
+      <h1>Privé</h1>
+      <p class="today" id="vCount"></p>
+    </div>
+  </header>
+  <main class="wrap feed" id="vaultFeed"></main>
+</div>
+
+<div class="capture" id="captureBar">
+  <div class="wrap">
+    <form id="capForm" autocomplete="off">
+      <input id="capture" type="text" placeholder="Snel iets noteren…" enterkeyhint="done" aria-label="Snel iets noteren">
+      <button type="button" class="sq alt" id="newList" aria-label="Nieuw lijstje"></button>
+      <button type="submit" class="sq go" id="newNote" aria-label="Nieuwe notitie"></button>
+    </form>
+  </div>
+</div>
+
+<div id="editor" hidden>
+  <header class="ed-top wrap">
+    <button type="button" class="back" id="back"></button>
+    <div class="ed-actions">
+      <button type="button" class="icon-btn" id="pin" aria-pressed="false" aria-label="Vastzetten"></button>
+      <button type="button" class="icon-btn danger" id="del" aria-label="Verwijderen"></button>
+    </div>
+  </header>
+  <div class="wrap ed-body">
+    <textarea id="title" rows="1" placeholder="Titel" aria-label="Titel" enterkeyhint="next"></textarea>
+    <div class="ed-meta">
+      <label class="fpick"><span id="fpickIcon"></span><select id="folderSel" aria-label="Map"></select></label>
+      <span id="meta"></span>
+    </div>
+    <div id="lines"></div>
+  </div>
+  <div class="tools" id="tools">
+    <div class="wrap">
+      <button type="button" class="tool" id="tTodo" aria-pressed="false"></button>
+      <button type="button" class="tool icon" id="tPhoto" aria-label="Foto toevoegen"></button>
+      <button type="button" class="tool" id="tReset" hidden></button>
+      <button type="button" class="tool" id="tClear" hidden></button>
+    </div>
+  </div>
+  <input type="file" id="photoIn" accept="image/*" multiple hidden>
+</div>
+
+<div class="viewer" id="viewer" role="dialog" aria-label="Foto" hidden>
+  <img id="viewerImg" alt="">
+  <button type="button" class="img-del" id="viewerClose" aria-label="Sluiten"></button>
+</div>
+
+<div class="scrim" id="sheet" hidden>
+  <form class="sheet" id="sheetForm" autocomplete="off">
+    <h2 id="sheetTitle"></h2>
+    <input id="sheetInput" type="text" aria-labelledby="sheetTitle" enterkeyhint="done">
+    <p class="sheet-err" id="sheetErr" hidden>Geef de map een naam.</p>
+    <div class="sheet-btns">
+      <button type="button" class="btn ghost" id="sheetCancel">Annuleren</button>
+      <button type="submit" class="btn primary" id="sheetOk"></button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<div class="scrim" id="menu" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="menuTitle">
+    <h2 id="menuTitle">Back-up</h2>
+    <button type="button" class="menu-item" id="mExport"><span id="mExportIco"></span><span><strong>Exporteren</strong><small>Bewaar alles in één bestand: notities, mappen, foto's en Privé (blijft versleuteld).</small></span></button>
+    <button type="button" class="menu-item" id="mImport"><span id="mImportIco"></span><span><strong>Importeren</strong><small>Zet een exportbestand terug, bijvoorbeeld op een nieuwe gsm.</small></span></button>
+    <div class="sheet-btns"><button type="button" class="btn ghost" id="menuClose">Sluiten</button></div>
+  </div>
+  <input type="file" id="importIn" accept="application/json,.json" hidden>
+</div>
+
+<div class="scrim" id="confirm" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle">Alles vervangen?</h2>
+    <p id="confirmText"></p>
+    <div class="sheet-btns">
+      <button type="button" class="btn ghost" id="confirmNo">Annuleren</button>
+      <button type="button" class="btn danger-btn" id="confirmYes">Vervangen</button>
+    </div>
+  </div>
+</div>
+
+<div class="pin" id="lockPad" role="dialog" aria-modal="true" aria-labelledby="pinTitle" hidden>
+  <div class="pin-inner">
+    <div class="pin-ico" id="pinIco"></div>
+    <h2 id="pinTitle"></h2>
+    <p class="pin-text" id="pinText"></p>
+    <div class="dots" id="dots" aria-live="polite"></div>
+    <p class="pin-err" id="pinErr" role="alert"></p>
+    <div class="pad" id="pad">
+      <button type="button" class="key" data-k="1">1</button>
+      <button type="button" class="key" data-k="2">2</button>
+      <button type="button" class="key" data-k="3">3</button>
+      <button type="button" class="key" data-k="4">4</button>
+      <button type="button" class="key" data-k="5">5</button>
+      <button type="button" class="key" data-k="6">6</button>
+      <button type="button" class="key" data-k="7">7</button>
+      <button type="button" class="key" data-k="8">8</button>
+      <button type="button" class="key" data-k="9">9</button>
+      <button type="button" class="key ghost" id="pinCancel">Annuleren</button>
+      <button type="button" class="key" data-k="0">0</button>
+      <button type="button" class="key ghost" data-k="del" id="pinDel" aria-label="Wis laatste cijfer"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const svg = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  check: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>',
+  search: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  list: svg('<rect x="3.5" y="4.5" width="5" height="5" rx="1.5"/><path d="M12 7h8.5"/><rect x="3.5" y="14.5" width="5" height="5" rx="1.5"/><path d="M12 17h8.5"/>'),
+  back: svg('<path d="M15 5l-7 7 7 7"/>'),
+  pin: svg('<path d="M9 3.5h6l-1 6 3 3V14H7v-1.5l3-3z"/><path d="M12 14v6.5"/>'),
+  trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+  box: svg('<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 12l2.5 2.5 4.5-5"/>'),
+  folder: svg('<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>'),
+  pencil: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
+  lock: svg('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'),
+  erase: svg('<path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/>'),
+  camera: svg('<path d="M4 8.5a2 2 0 0 1 2-2h2l1.5-2h5L16 6.5h2a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/>'),
+  redo: svg('<path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/>'),
+  grip: svg('<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>'),
+  x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+  link: svg('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
+  dots: svg('<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>'),
+  download: svg('<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>'),
+  upload: svg('<path d="M12 15.5v-11M7.5 9L12 4.5 16.5 9"/><path d="M5 19.5h14"/>'),
+};
+
+/* ---------- gegevens ---------- */
+const KEY = 'kladje.v2', OLD_KEY = 'kladje.v1';
+const L = (text, type = 'text', done = false) => ({ id: uid(), type, text, done });
+const T = (text, done = false) => L(text, 'todo', done);
+
+function seed() {
+  const ago = m => Date.now() - m * 60000;
+  const ex = o => ({ id: uid(), pinned: false, example: true, folder: null, ...o });
+  const folders = [
+    { id: 'f-japan', name: 'Japan', example: true, created: ago(60 * 24 * 10) },
+    { id: 'f-thuis', name: 'Thuis', example: true, created: ago(60 * 24 * 9) },
+  ];
+  const notes = [
+    ex({ title: 'Route', folder: 'f-japan', updated: ago(40), lines: [
+      L('Tokyo: 5 nachten in Shinjuku.'), L('Kyoto: 4 nachten, de laatste in een ryokan.'),
+      L('Osaka: 2 nachten, terugvlucht vanaf Kansai.'), L('Dagtrip naar Nara vanuit Kyoto.'),
+      L('Treinen opzoeken: https://www.japan-guide.com/e/e2018.html') ] }),
+    ex({ title: 'Eten om te proberen', folder: 'f-japan', updated: ago(60 * 5), lines: [
+      L('Okonomiyaki in Osaka.'), L('Ramen in een zaak met een bestelautomaat.'), L('Nishiki-markt in Kyoto, liefst ’s ochtends.') ] }),
+    ex({ title: 'Voor vertrek', folder: 'f-japan', pinned: true, updated: ago(25), lines: [
+      T('Reisverzekering nakijken'), T('eSIM bestellen'), T('Yen afhalen'), T('Visit Japan Web invullen'),
+      T('Paspoort nog 6 maanden geldig', true) ] }),
+    ex({ title: 'Paklijst', folder: 'f-japan', updated: ago(60 * 26), lines: [
+      T('Stekkeradapter type A'), T('Klein handdoekje'), T('Powerbank'), T('Muntenzakje'), T('Goede wandelschoenen', true) ] }),
+    ex({ title: 'Boodschappen', pinned: true, updated: ago(18), lines: [
+      T('Brood'), T('Tomaten'), T('Feta'), T('Afwasmiddel'), T('Bananen'), T('Havermelk', true), T('Koffiebonen', true) ] }),
+    ex({ title: 'Deze week', folder: 'f-thuis', updated: ago(95), lines: [
+      T('Auto binnenbrengen voor onderhoud'), T('Elektriciteitsfactuur betalen'), T('Fietslicht vervangen'), T('Mama bellen voor zondag', true) ] }),
+    ex({ title: 'Boeken om te lezen', updated: ago(60 * 24 * 6), lines: [
+      T('Klara and the Sun – Kazuo Ishiguro'), T('Stoner – John Williams'), T('Het smelt – Lize Spit', true) ] }),
+  ];
+  return { folders, notes };
+}
+function load() {
+  try { const r = localStorage.getItem(KEY); if (r) return JSON.parse(r); } catch (e) {}
+  const s = seed();
+  try {
+    const r = localStorage.getItem(OLD_KEY);
+    if (r) {
+      // Notities uit de eerste versie behouden, en de voorbeeldmap Japan erbij zetten.
+      const old = JSON.parse(r).map(n => ({ folder: null, ...n }));
+      return { folders: s.folders.filter(f => f.id === 'f-japan'), notes: [...old, ...s.notes.filter(n => n.folder === 'f-japan')] };
+    }
+  } catch (e) {}
+  return s;
+}
+let { folders, notes } = load();
+let saveT;
+function save() {
+  clearTimeout(saveT);
+  try { localStorage.setItem(KEY, JSON.stringify({ folders, notes: notes.filter(n => !n.private) })); } catch (e) {}
+  if (vaultKey) sealVault().catch(() => {});
+}
+function saveSoon() { clearTimeout(saveT); saveT = setTimeout(save, 250); }
+const snapshot = () => JSON.stringify({ folders, notes });
+
+const isList = n => n.lines.some(l => l.type === 'todo');
+const isEmpty = n => !n.title.trim() && n.lines.every(l => l.type !== 'img' && !l.text.trim());
+const fullText = n => [n.title, ...n.lines.map(l => l.text)].join('\n');
+const tagsOf = n => [...new Set([...fullText(n).matchAll(/#([\p{L}\d_-]+)/gu)].map(m => m[1].toLowerCase()))];
+const folderById = id => folders.find(f => f.id === id);
+const byPinThenDate = (a, b) => (b.pinned - a.pinned) || (b.updated - a.updated);
+function newFolder(name) { const f = { id: uid(), name, example: false, created: Date.now() }; folders.push(f); save(); return f; }
+const countText = f => countOf(notes.filter(n => n.folder === f.id));
+function countOf(arr) {
+  const li = arr.filter(isList).length, no = arr.length - li, p = [];
+  if (no) p.push(no === 1 ? '1 notitie' : no + ' notities');
+  if (li) p.push(li === 1 ? '1 lijstje' : li + ' lijstjes');
+  return p.join(' · ') || 'Nog leeg';
+}
+// Afgevinkte items zakken naar onderen binnen hun eigen blok van opeenvolgende items.
+function sinkDone(n) {
+  const out = []; let block = [];
+  const flush = () => { out.push(...block.filter(l => !l.done), ...block.filter(l => l.done)); block = []; };
+  n.lines.forEach(l => { if (l.type === 'todo') block.push(l); else { flush(); out.push(l); } });
+  flush(); n.lines = out;
+}
+
+/* ---------- links ---------- */
+const URL_RE = /(?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]'"]/gi;
+const hrefOf = u => /^www\./i.test(u) ? 'https://' + u : u;
+const urlsIn = text => text.match(URL_RE) || [];
+// Werkt op tekst die al ge-escaped is.
+const linkify = html => html.replace(URL_RE, u => `<a href="${hrefOf(u)}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/i, '')}</a>`);
+const linkChips = text => urlsIn(text).map(u =>
+  `<a class="link" href="${esc(hrefOf(u))}" target="_blank" rel="noopener">${ICON.link}<span>${esc(u.replace(/^https?:\/\/(www\.)?/i, ''))}</span></a>`).join('');
+
+/* ---------- tijd ---------- */
+const fmt = o => new Intl.DateTimeFormat('nl-BE', o);
+function rel(t) {
+  const d = new Date(t), now = new Date(), min = Math.round((now - d) / 60000);
+  if (min < 1) return 'net nu';
+  if (min < 60) return min + ' min';
+  if (d.toDateString() === now.toDateString()) return fmt({ hour: '2-digit', minute: '2-digit' }).format(d);
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'gisteren';
+  if (now - d < 6 * 864e5) return fmt({ weekday: 'long' }).format(d);
+  return fmt({ day: 'numeric', month: 'short' }).format(d);
+}
+
+/* ---------- foto's (IndexedDB; foto's in Privé worden versleuteld) ---------- */
+let dbP;
+const db = () => dbP || (dbP = new Promise((res, rej) => {
+  const r = indexedDB.open('kladje-img', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('img');
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+}));
+async function idb(mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const tx = d.transaction('img', mode), req = fn(tx.objectStore('img'));
+    tx.oncomplete = () => res(req && req.result); tx.onerror = () => rej(tx.error);
+  });
+}
+const imgCache = new Map();
+async function shrink(file) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise(res => c.toBlob(res, 'image/jpeg', 0.82));
+}
+async function storeImage(blob, isPrivate) {
+  const id = 'img-' + uid();
+  if (isPrivate) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const buf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, vaultKey, await blob.arrayBuffer());
+    await idb('readwrite', s => s.put({ enc: true, iv, buf, type: blob.type }, id));
+  } else {
+    await idb('readwrite', s => s.put({ blob }, id));
+  }
+  imgCache.set(id, URL.createObjectURL(blob));
+  return id;
+}
+async function imageUrl(id) {
+  if (imgCache.has(id)) return imgCache.get(id);
+  try {
+    const rec = await idb('readonly', s => s.get(id));
+    if (!rec) return null;
+    let blob = rec.blob;
+    if (rec.enc) {
+      if (!vaultKey) return null;
+      blob = new Blob([await crypto.subtle.decrypt({ name: 'AES-GCM', iv: rec.iv }, vaultKey, rec.buf)], { type: rec.type });
+    }
+    const url = URL.createObjectURL(blob); imgCache.set(id, url); return url;
+  } catch (e) { return null; }
+}
+function hydrate(root) {
+  root.querySelectorAll('img[data-img]:not([src])').forEach(async im => { const u = await imageUrl(im.dataset.img); if (u) im.src = u; });
+}
+// Foto's die nergens meer gebruikt worden opruimen (alleen niet-versleutelde; die van Privé zijn zonder pincode niet te controleren).
+async function cleanImages() {
+  try {
+    const used = new Set(notes.flatMap(n => n.lines.filter(l => l.type === 'img').map(l => l.img)));
+    const d = await db(), st = d.transaction('img', 'readwrite').objectStore('img');
+    st.openCursor().onsuccess = e => {
+      const c = e.target.result; if (!c) return;
+      if (!c.value.enc && !used.has(c.key)) c.delete();
+      c.continue();
+    };
+  } catch (e) {}
+}
+
+/* ---------- schermen ---------- */
+const state = { view: 'home', folder: null, open: null, chip: 'all', q: '' };
+const scrollMem = { home: 0, folder: 0, vault: 0 };
+
+function showView() {
+  const ed = !!state.open;
+  $('#home').hidden = ed || state.view !== 'home';
+  $('#folderView').hidden = ed || state.view !== 'folder';
+  $('#vaultView').hidden = ed || state.view !== 'vault';
+  $('#editor').hidden = !ed;
+  $('#captureBar').hidden = ed;
+  if (!ed) rerender();
+}
+function rerender() {
+  if (state.view === 'folder') renderFolder();
+  else if (state.view === 'vault') renderVault();
+  else renderHome();
+  const f = state.view === 'folder' && folderById(state.folder);
+  $('#capture').placeholder = state.view === 'vault' ? 'Snel iets noteren in Privé…' : f ? `Snel iets noteren in ${f.name}…` : 'Snel iets noteren…';
+}
+
+/* ---------- overzicht ---------- */
+function renderHome() {
+  const chips = [['all', 'Alles'], ['lists', 'Lijstjes'], ['notes', 'Notities']];
+  $('#chips').innerHTML = chips.map(([k, l]) =>
+    `<button type="button" class="chip" data-chip="${k}" aria-pressed="${state.chip === k}">${l}</button>`).join('');
+
+  const q = state.q.trim().toLowerCase(), filtering = q || state.chip !== 'all';
+  const list = notes.filter(n => {
+    if (n.private) return false;
+    if (state.chip === 'lists' && !isList(n)) return false;
+    if (state.chip === 'notes' && isList(n)) return false;
+    const f = folderById(n.folder);
+    return !q || (fullText(n) + '\n' + (f ? f.name : '')).toLowerCase().includes(q);
+  }).sort((a, b) => b.updated - a.updated);
+
+  const pinned = list.filter(n => n.pinned), rest = list.filter(n => !n.pinned);
+  let h = '';
+  if (notes.some(n => n.example) || folders.some(f => f.example))
+    h += `<div class="example"><span>Dit zijn voorbeelden.</span><button type="button" data-act="clear-examples">Wis voorbeelden</button></div>`;
+  if (!filtering) h += `<section class="sec"><h2>Mappen</h2><div class="fgrid">${folders.map(f =>
+    `<button type="button" class="ftile" data-folder="${f.id}">${ICON.folder}<strong>${esc(f.name)}</strong><span>${countText(f)}</span></button>`).join('')}
+    <button type="button" class="ftile add" data-act="new-folder">${ICON.plus}<span>Nieuwe map</span></button></div></section>`;
+  if (pinned.length) h += section('Vastgezet', pinned);
+  if (rest.length) h += section(pinned.length ? 'Recent' : 'Alles', rest);
+  if (list.length) h += `<p class="hint">Veeg een kaartje naar rechts om het vast te zetten, naar links om het te verwijderen.</p>`;
+  else h += notes.some(n => !n.private)
+    ? `<div class="empty"><strong>Niets gevonden</strong>Probeer een ander woord of filter.</div>`
+    : `<div class="empty"><strong>Nog leeg</strong>Typ onderaan je eerste notitie, of tik op het lijstje-icoon.</div>`;
+  $('#feed').innerHTML = h;
+  hydrate($('#feed'));
+}
+const section = (label, arr, inFolder) =>
+  `<section class="sec"><h2>${label}</h2><div class="stack">${arr.map(n => card(n, inFolder)).join('')}</div></section>`;
+
+function card(n, inFolder) {
+  const todos = n.lines.filter(l => l.type === 'todo'), open = todos.filter(l => !l.done);
+  const imgs = n.lines.filter(l => l.type === 'img');
+  const text = n.lines.filter(l => l.type === 'text' && l.text.trim()).map(l => l.text).join('\n');
+  let body = '';
+  if (text) body += `<p class="preview">${linkify(esc(text))}</p>`;
+  if (imgs.length) body += `<div class="thumbs">${imgs.slice(0, 3).map(l => `<img data-img="${l.img}" alt="">`).join('')}${imgs.length > 3 ? `<span>+${imgs.length - 3}</span>` : ''}</div>`;
+  if (open.length) body += `<ul class="mini">${open.slice(0, 4).map(l =>
+    `<li><button type="button" class="cb" data-toggle="${l.id}" aria-pressed="false" aria-label="Afvinken: ${esc(l.text || 'leeg item')}">${ICON.check}</button><span>${l.text ? linkify(esc(l.text)) : '&nbsp;'}</span></li>`).join('')}</ul>`;
+  const foot = [];
+  const f = !inFolder && folderById(n.folder);
+  if (f) foot.push(`<span class="fname">${ICON.folder}${esc(f.name)}</span>`);
+  if (todos.length) foot.push(open.length ? `${todos.length - open.length} van ${todos.length} afgevinkt` : 'Alles afgevinkt');
+  if (open.length > 4) foot.push(`nog ${open.length - 4} open`);
+  tagsOf(n).forEach(t => foot.push(`<span class="tag">#${esc(t)}</span>`));
+  return `<div class="swipe" data-id="${n.id}">
+    <div class="swipe-bg" aria-hidden="true"><span class="sw-pin">${ICON.pin}${n.pinned ? 'Losmaken' : 'Vastzetten'}</span><span class="sw-del">Verwijderen${ICON.trash}</span></div>
+    <article class="card" data-id="${n.id}" tabindex="0">
+      <div class="card-head"><h3 class="${n.title.trim() ? '' : 'untitled'}">${esc(n.title.trim() || 'Zonder titel')}</h3><time>${rel(n.updated)}</time></div>
+      ${body}${foot.length ? `<div class="card-foot">${foot.map(x => x.startsWith('<span') ? x : `<span>${x}</span>`).join('')}</div>` : ''}
+    </article>
+  </div>`;
+}
+
+/* ---------- map ---------- */
+function openFolder(id) {
+  scrollMem.home = scrollY;
+  state.view = 'folder'; state.folder = id; hideToast();
+  showView(); scrollTo(0, 0);
+}
+function leaveFolder() {
+  state.view = 'home'; state.folder = null;
+  showView(); scrollTo(0, scrollMem.home);
+}
+function renderFolder() {
+  const f = folderById(state.folder);
+  if (!f) { state.view = 'home'; return renderHome(); }
+  $('#fTitle').textContent = f.name;
+  $('#fCount').textContent = countText(f);
+  const inF = notes.filter(n => n.folder === f.id).sort(byPinThenDate);
+  $('#folderFeed').innerHTML =
+    folderSection('Notities', inF.filter(n => !isList(n)), 'text', 'Notitie', 'Nog geen notities. Tik om er een te schrijven.') +
+    folderSection('Lijstjes', inF.filter(isList), 'todo', 'Lijstje', 'Nog geen lijstjes. Tik om er een te maken.');
+  hydrate($('#folderFeed'));
+}
+const folderSection = (label, arr, type, add, empty) =>
+  `<section class="sec"><div class="sec-head"><h2>${label}</h2><button type="button" class="add-in" data-new="${type}">${ICON.plus}${add}</button></div>
+  ${arr.length ? `<div class="stack">${arr.map(n => card(n, true)).join('')}</div>` : `<button type="button" class="sec-empty" data-new="${type}">${empty}</button>`}</section>`;
+
+$('#fBack').addEventListener('click', leaveFolder);
+$('#fRename').addEventListener('click', () => {
+  const f = folderById(state.folder);
+  openSheet({ title: 'Map hernoemen', value: f.name, ok: 'Bewaren', onOk: name => { f.name = name; f.example = false; save(); rerender(); } });
+});
+$('#fDel').addEventListener('click', () => {
+  const f = folderById(state.folder), snap = snapshot(), n = notes.filter(x => x.folder === f.id).length;
+  folders = folders.filter(x => x !== f); notes = notes.filter(x => x.folder !== f.id); save();
+  leaveFolder();
+  toast(n ? `Map ${f.name} en ${n === 1 ? '1 notitie' : n + ' notities'} verwijderd` : `Map ${f.name} verwijderd`,
+    { label: 'Ongedaan maken', fn: () => restore(snap) });
+});
+
+/* ---------- klikken in de lijsten (overzicht, map en privé) ---------- */
+let swipedAt = 0;
+function feedClick(e) {
+  if (Date.now() - swipedAt < 400) return;
+  if (e.target.closest('a')) return;
+  const tog = e.target.closest('[data-toggle]');
+  if (tog) {
+    const n = notes.find(x => x.id === tog.closest('.card').dataset.id);
+    n.lines.find(x => x.id === tog.dataset.toggle).done = true; n.example = false;
+    sinkDone(n); save();
+    tog.setAttribute('aria-pressed', 'true'); tog.closest('li').classList.add('ticked');
+    setTimeout(rerender, 450);
+    return;
+  }
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (act === 'clear-examples') {
+    const snap = snapshot();
+    notes = notes.filter(n => !n.example);
+    folders = folders.filter(f => !f.example || notes.some(n => n.folder === f.id));
+    save(); rerender();
+    toast('Voorbeelden gewist', { label: 'Ongedaan maken', fn: () => restore(snap) });
+    return;
+  }
+  if (act === 'new-folder') {
+    openSheet({ title: 'Nieuwe map', placeholder: 'Bijvoorbeeld Japan', ok: 'Maken', onOk: name => openFolder(newFolder(name).id) });
+    return;
+  }
+  const fo = e.target.closest('[data-folder]');
+  if (fo) return openFolder(fo.dataset.folder);
+  const nw = e.target.closest('[data-new]');
+  if (nw) return openNew(nw.dataset.new, '');
+  const c = e.target.closest('.card');
+  if (c) openEditor(c.dataset.id);
+}
+function feedKey(e) {
+  const c = e.target.closest('.card');
+  if (c && e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openEditor(c.dataset.id); }
+}
+
+// Vegen: naar rechts = vastzetten of losmaken, naar links = verwijderen.
+const SWIPE_AT = 90;
+let sw = null;
+function swipeDown(e) {
+  const wrap = e.target.closest('.swipe');
+  if (!wrap || e.button > 0) return;
+  sw = { wrap, card: wrap.querySelector('.card'), x: e.clientX, y: e.clientY, dx: 0, active: false, pid: e.pointerId };
+}
+function swipeMove(e) {
+  if (!sw || e.pointerId !== sw.pid) return;
+  const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+  if (!sw.active) {
+    if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }
+    if (Math.abs(dx) < 12) return;
+    sw.active = true; sw.card.style.transition = 'none';
+    try { sw.card.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+  sw.dx = dx;
+  sw.card.style.transform = `translateX(${dx}px)`;
+  sw.wrap.dataset.dir = dx > 0 ? 'right' : 'left';
+  sw.wrap.classList.toggle('armed', Math.abs(dx) > SWIPE_AT);
+}
+function swipeUp() {
+  if (!sw) return;
+  const s = sw; sw = null;
+  if (!s.active) return;
+  swipedAt = Date.now();
+  s.card.style.transition = '';
+  const id = s.wrap.dataset.id;
+  if (s.dx < -SWIPE_AT) {
+    s.card.style.transform = 'translateX(-110%)';
+    setTimeout(() => deleteNote(id), 180);
+    return;
+  }
+  s.card.style.transform = '';
+  if (s.dx > SWIPE_AT) setTimeout(() => togglePinNote(id), 150);
+  else setTimeout(() => { delete s.wrap.dataset.dir; s.wrap.classList.remove('armed'); }, 200);
+}
+function deleteNote(id) {
+  const snap = snapshot();
+  notes = notes.filter(n => n.id !== id); save(); rerender();
+  toast('Notitie verwijderd', { label: 'Ongedaan maken', fn: () => restore(snap) });
+}
+function togglePinNote(id) {
+  const n = notes.find(x => x.id === id); if (!n) return;
+  n.pinned = !n.pinned; n.example = false; save(); rerender();
+  toast(n.pinned ? 'Vastgezet' : 'Losgemaakt');
+}
+['#feed', '#folderFeed', '#vaultFeed'].forEach(s => {
+  const el = $(s);
+  el.addEventListener('click', feedClick);
+  el.addEventListener('keydown', feedKey);
+  el.addEventListener('pointerdown', swipeDown);
+  el.addEventListener('pointermove', swipeMove);
+  el.addEventListener('pointerup', swipeUp);
+  el.addEventListener('pointercancel', swipeUp);
+});
+
+$('#chips').addEventListener('click', e => {
+  const b = e.target.closest('[data-chip]'); if (!b) return;
+  state.chip = b.dataset.chip; renderHome();
+});
+$('#searchBtn').addEventListener('click', () => {
+  const row = $('#searchRow'), opening = row.hidden;
+  row.hidden = !opening; $('#searchBtn').setAttribute('aria-pressed', opening);
+  if (opening) $('#q').focus(); else { state.q = ''; $('#q').value = ''; renderHome(); }
+});
+$('#q').addEventListener('input', e => { state.q = e.target.value; renderHome(); });
+
+/* ---------- snelle invoer ---------- */
+const hereFolder = () => state.view === 'folder' ? state.folder : null;
+$('#capForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if (longPressFired) { longPressFired = false; return; }
+  const v = $('#capture').value.trim();
+  if (!v) return openNew('text', '');
+  const n = newNote(v, 'text', hereFolder());
+  notes.unshift(n); save(); $('#capture').value = ''; rerender();
+  toast('Notitie bewaard', { label: 'Openen', fn: () => openEditor(n.id, 'line') });
+});
+$('#newList').addEventListener('click', () => { const v = $('#capture').value.trim(); $('#capture').value = ''; openNew('todo', v); });
+
+function newNote(title, type, folder) {
+  const n = { id: uid(), title, folder, pinned: false, example: false, updated: Date.now(), lines: [L('', type)] };
+  if (state.view === 'vault') n.private = true;
+  return n;
+}
+function openNew(type, title) {
+  const n = newNote(title, type, hereFolder()); notes.unshift(n);
+  openEditor(n.id, title ? 'line' : 'title');
+}
+
+/* ---------- editor ---------- */
+const cur = () => notes.find(n => n.id === state.open);
+let curLid = null;
+
+function openEditor(id, focus) {
+  scrollMem[state.view] = scrollY;
+  state.open = id; curLid = null; hideToast();
+  showView();
+  const n = cur(), f = state.view === 'folder' && folderById(state.folder);
+  $('#back').innerHTML = ICON.back + `<span>${state.view === 'vault' ? 'Privé' : f ? esc(f.name) : 'Kladje'}</span>`;
+  $('.fpick').hidden = !!n.private;
+  $('#title').value = n.title; autosize($('#title'));
+  fillFolderSel(); renderLines(); updateMeta(); updatePin(); updateTools();
+  scrollTo(0, 0);
+  if (focus === 'title') $('#title').focus();
+  else if (focus === 'line') focusLine(n.lines[0].id);
+}
+function closeEditor() {
+  const n = cur();
+  if (n && isEmpty(n)) notes = notes.filter(x => x !== n);
+  else if (n) sinkDone(n);
+  save(); state.open = null;
+  showView(); scrollTo(0, scrollMem[state.view] || 0);
+}
+function touch() {
+  const n = cur(); n.updated = Date.now(); n.example = false;
+  saveSoon(); updateMeta(); updateTools();
+}
+const updateMeta = () => { $('#meta').textContent = 'Bewerkt ' + rel(cur().updated); };
+const updatePin = () => { const p = !!cur().pinned; $('#pin').setAttribute('aria-pressed', p); $('#pin').setAttribute('aria-label', p ? 'Losmaken' : 'Vastzetten'); };
+function updateTools() {
+  const n = cur(), done = n.lines.filter(l => l.type === 'todo' && l.done).length;
+  const l = n.lines.find(x => x.id === curLid);
+  $('#tTodo').setAttribute('aria-pressed', !!(l && l.type === 'todo'));
+  $('#tReset').hidden = $('#tClear').hidden = !done;
+  $('#tClear').innerHTML = ICON.trash + `<span>${done}</span>`;
+  $('#tClear').setAttribute('aria-label', done === 1 ? 'Wis 1 afgevinkt item' : `Wis ${done} afgevinkte items`);
+}
+function fillFolderSel() {
+  const s = $('#folderSel');
+  s.innerHTML = `<option value="">Geen map</option>` + folders.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('') + `<option value="__new">Nieuwe map…</option>`;
+  s.value = cur().folder || '';
+}
+$('#folderSel').addEventListener('change', e => {
+  const n = cur(), v = e.target.value;
+  if (v === '__new') {
+    e.target.value = n.folder || '';
+    openSheet({ title: 'Nieuwe map', placeholder: 'Bijvoorbeeld Japan', ok: 'Maken', onOk: name => { n.folder = newFolder(name).id; touch(); fillFolderSel(); } });
+  } else { n.folder = v || null; touch(); }
+});
+function autosize(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+
+function lineEl(l, i, all) {
+  const row = document.createElement('div');
+  row.dataset.lid = l.id;
+  if (l.type === 'img') {
+    row.className = 'ln img';
+    row.innerHTML = `<button type="button" class="img-open" aria-label="Foto groot bekijken"><img data-img="${l.img}" alt=""></button>
+      <button type="button" class="img-del" aria-label="Foto verwijderen">${ICON.x}</button>`;
+    return row;
+  }
+  row.className = 'ln' + (l.type === 'todo' ? ' todo' : '') + (l.done ? ' done' : '');
+  if (l.type === 'todo') {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cb'; b.innerHTML = ICON.check;
+    b.setAttribute('aria-pressed', l.done); b.setAttribute('aria-label', l.done ? 'Niet afgevinkt' : 'Afvinken');
+    row.append(b);
+  }
+  const main = document.createElement('div'); main.className = 'ln-main';
+  const ta = document.createElement('textarea');
+  ta.rows = 1; ta.id = 'ln-' + l.id; ta.value = l.text;
+  ta.setAttribute('aria-label', l.type === 'todo' ? 'Item' : 'Tekst');
+  if (l.type === 'todo') ta.placeholder = 'Item';
+  else if (all.length === 1) ta.placeholder = 'Schrijf iets. Begin met [] voor een afvinkbaar item.';
+  const links = document.createElement('div'); links.className = 'links';
+  links.innerHTML = linkChips(l.text); links.hidden = !links.innerHTML;
+  main.append(ta, links); row.append(main);
+  if (l.type === 'todo') {
+    const g = document.createElement('button');
+    g.type = 'button'; g.className = 'grip'; g.innerHTML = ICON.grip; g.setAttribute('aria-label', 'Verslepen om de volgorde te wijzigen');
+    row.append(g);
+  }
+  return row;
+}
+function renderLines() {
+  const n = cur();
+  if (!n.lines.length) n.lines.push(L(''));
+  $('#lines').replaceChildren(...n.lines.map(lineEl));
+  $('#lines').querySelectorAll('textarea').forEach(autosize);
+  hydrate($('#lines'));
+}
+function focusLine(id, pos) {
+  const ta = document.getElementById('ln-' + id); if (!ta) return;
+  ta.focus(); const p = pos ?? ta.value.length; ta.setSelectionRange(p, p);
+  curLid = id; updateTools();
+}
+// Opnieuw tekenen zonder de cursor kwijt te raken.
+function rerenderLinesKeepFocus() {
+  const a = document.activeElement, id = a && a.tagName === 'TEXTAREA' && a.closest('.ln') ? a.closest('.ln').dataset.lid : null;
+  const pos = id ? a.selectionStart : null;
+  renderLines(); if (id) focusLine(id, pos);
+}
+const lineIndex = ta => cur().lines.findIndex(l => l.id === ta.closest('.ln').dataset.lid);
+
+function splitLine(ta) {
+  const n = cur(), i = lineIndex(ta), l = n.lines[i];
+  if (l.type === 'todo' && !l.text.trim()) { l.type = 'text'; l.done = false; touch(); renderLines(); focusLine(l.id, 0); return; }
+  const a = ta.selectionStart, b = ta.selectionEnd;
+  const nl = { id: uid(), type: l.type, text: l.text.slice(b), done: false };
+  l.text = l.text.slice(0, a);
+  n.lines.splice(i + 1, 0, nl); touch(); renderLines(); focusLine(nl.id, 0);
+}
+function backAtStart(ta) {
+  const n = cur(), i = lineIndex(ta), l = n.lines[i];
+  if (l.type === 'todo') { l.type = 'text'; l.done = false; touch(); renderLines(); focusLine(l.id, 0); return true; }
+  if (i > 0) {
+    const p = n.lines[i - 1];
+    if (p.type === 'img') return true;
+    const at = p.text.length;
+    p.text += l.text; n.lines.splice(i, 1); touch(); renderLines(); focusLine(p.id, at); return true;
+  }
+  return false;
+}
+const atStart = ta => ta.selectionStart === 0 && ta.selectionEnd === 0;
+
+const lines = $('#lines');
+lines.addEventListener('keydown', e => {
+  const ta = e.target; if (ta.tagName !== 'TEXTAREA' || e.isComposing) return;
+  if (e.key === 'Enter') { e.preventDefault(); splitLine(ta); }
+  else if (e.key === 'Backspace' && atStart(ta)) { if (backAtStart(ta)) e.preventDefault(); }
+  else if (e.key === 'ArrowUp' && atStart(ta)) {
+    const i = lineIndex(ta); if (i > 0) { e.preventDefault(); focusLine(cur().lines[i - 1].id); }
+  }
+  else if (e.key === 'ArrowDown' && ta.selectionStart === ta.value.length) {
+    const i = lineIndex(ta), nx = cur().lines[i + 1]; if (nx) { e.preventDefault(); focusLine(nx.id, 0); }
+  }
+});
+// Virtuele toetsenborden (Android) sturen vaak geen bruikbare keydown, wel beforeinput.
+lines.addEventListener('beforeinput', e => {
+  const ta = e.target; if (ta.tagName !== 'TEXTAREA') return;
+  if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph') { e.preventDefault(); splitLine(ta); }
+  else if (e.inputType === 'deleteContentBackward' && atStart(ta)) { if (backAtStart(ta)) e.preventDefault(); }
+});
+lines.addEventListener('input', e => {
+  const ta = e.target; if (ta.tagName !== 'TEXTAREA') return;
+  const n = cur(), i = lineIndex(ta), l = n.lines[i];
+  if (ta.value.includes('\n')) {
+    const [first, ...more] = ta.value.split('\n');
+    l.text = first;
+    const extra = more.map(t => ({ id: uid(), type: l.type, text: t, done: false }));
+    n.lines.splice(i + 1, 0, ...extra); touch(); renderLines(); focusLine(extra.at(-1).id); return;
+  }
+  const m = l.type === 'text' && ta.value.match(/^\s*(\[\s?\]|\(\s?\))\s/);
+  if (m) { l.type = 'todo'; l.text = ta.value.slice(m[0].length); touch(); renderLines(); focusLine(l.id); return; }
+  l.text = ta.value; autosize(ta);
+  const links = ta.parentElement.querySelector('.links');
+  links.innerHTML = linkChips(l.text); links.hidden = !links.innerHTML;
+  touch();
+});
+lines.addEventListener('focusin', e => {
+  if (e.target.tagName === 'TEXTAREA') { curLid = e.target.closest('.ln').dataset.lid; updateTools(); }
+});
+let sinkT;
+lines.addEventListener('click', e => {
+  const open = e.target.closest('.img-open');
+  if (open) { const src = open.querySelector('img').src; if (src) { $('#viewerImg').src = src; $('#viewer').hidden = false; } return; }
+  const del = e.target.closest('.img-del');
+  if (del) {
+    const n = cur(), snap = snapshot(), lid = del.closest('.ln').dataset.lid;
+    n.lines = n.lines.filter(l => l.id !== lid); touch(); renderLines();
+    toast('Foto verwijderd', { label: 'Ongedaan maken', fn: () => restore(snap) });
+    return;
+  }
+  const b = e.target.closest('.cb'); if (!b) return;
+  const row = b.closest('.ln'), l = cur().lines.find(x => x.id === row.dataset.lid);
+  l.done = !l.done; row.classList.toggle('done', l.done);
+  b.setAttribute('aria-pressed', l.done); b.setAttribute('aria-label', l.done ? 'Niet afgevinkt' : 'Afvinken');
+  touch();
+  // Even wachten zodat je het vinkje ziet, en dan laten zakken.
+  clearTimeout(sinkT);
+  const openId = state.open;
+  sinkT = setTimeout(() => {
+    if (state.open !== openId) return;
+    const n = cur(), before = n.lines.map(x => x.id).join();
+    sinkDone(n);
+    if (n.lines.map(x => x.id).join() !== before) { rerenderLinesKeepFocus(); saveSoon(); }
+  }, 650);
+});
+
+// Volgorde aanpassen: sleep een item aan het greepje rechts.
+let drag = null;
+lines.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.grip'); if (!g) return;
+  e.preventDefault();
+  clearTimeout(sinkT);
+  const row = g.closest('.ln');
+  try { g.setPointerCapture(e.pointerId); } catch (err) {}
+  if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') document.activeElement.blur();
+  drag = { row, pid: e.pointerId };
+  row.classList.add('dragging');
+});
+lines.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.pid) return;
+  const y = e.clientY;
+  if (y > innerHeight - 90) scrollBy(0, 10); else if (y < 110) scrollBy(0, -10);
+  let before = null;
+  for (const r of lines.children) {
+    if (r === drag.row) continue;
+    const b = r.getBoundingClientRect();
+    if (y < b.top + b.height / 2) { before = r; break; }
+  }
+  if (before !== drag.row.nextElementSibling) lines.insertBefore(drag.row, before);
+});
+function endDrag() {
+  if (!drag) return;
+  drag.row.classList.remove('dragging'); drag = null;
+  const order = [...lines.children].map(r => r.dataset.lid), n = cur();
+  n.lines.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  touch();
+}
+lines.addEventListener('pointerup', endDrag);
+lines.addEventListener('pointercancel', endDrag);
+
+$('#title').addEventListener('input', e => { cur().title = e.target.value.replace(/\n/g, ' '); autosize(e.target); touch(); });
+$('#title').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); focusLine(cur().lines[0].id, 0); }
+});
+$('#title').addEventListener('beforeinput', e => {
+  if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph') { e.preventDefault(); focusLine(cur().lines[0].id, 0); }
+});
+
+// Knoppen in de werkbalk mogen de focus (en het toetsenbord) niet wegnemen.
+$('#tools').addEventListener('pointerdown', e => { if (e.target.closest('.tool')) e.preventDefault(); });
+$('#tTodo').addEventListener('click', () => {
+  const n = cur(); let l = n.lines.find(x => x.id === curLid);
+  if (!l) { l = T(''); n.lines.push(l); }
+  else { l.type = l.type === 'todo' ? 'text' : 'todo'; l.done = false; }
+  const ta = document.getElementById('ln-' + l.id), pos = ta ? ta.selectionStart : undefined;
+  touch(); renderLines(); focusLine(l.id, pos);
+});
+$('#tReset').addEventListener('click', () => {
+  const n = cur(), snap = snapshot();
+  const count = n.lines.filter(l => l.type === 'todo' && l.done).length;
+  n.lines.forEach(l => { if (l.type === 'todo') l.done = false; });
+  touch(); rerenderLinesKeepFocus();
+  toast(count === 1 ? '1 vinkje weggehaald' : `${count} vinkjes weggehaald`, { label: 'Ongedaan maken', fn: () => restore(snap) });
+});
+$('#tClear').addEventListener('click', () => {
+  const n = cur(), snap = snapshot();
+  const count = n.lines.filter(l => l.type === 'todo' && l.done).length;
+  n.lines = n.lines.filter(l => !(l.type === 'todo' && l.done));
+  touch(); renderLines(); updateTools();
+  toast(count === 1 ? '1 item gewist' : `${count} items gewist`, { label: 'Ongedaan maken', fn: () => restore(snap) });
+});
+$('#tPhoto').addEventListener('click', () => $('#photoIn').click());
+$('#photoIn').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  if (!files.length) return;
+  const n = cur(); if (!n) return;
+  let at = n.lines.findIndex(l => l.id === curLid);
+  at = at < 0 ? n.lines.length : at + 1;
+  try {
+    for (const file of files) {
+      const blob = await shrink(file);
+      const id = await storeImage(blob, !!n.private);
+      n.lines.splice(at++, 0, { id: uid(), type: 'img', img: id, text: '', done: false });
+    }
+  } catch (err) { toast('Die foto kon niet worden toegevoegd. Probeer een andere.'); }
+  if (n.lines.at(-1).type === 'img') n.lines.push(L(''));
+  touch(); renderLines();
+});
+$('#viewer').addEventListener('click', () => { $('#viewer').hidden = true; });
+$('#pin').addEventListener('click', () => { const n = cur(); n.pinned = !n.pinned; n.example = false; save(); updatePin(); });
+$('#del').addEventListener('click', () => {
+  const snap = snapshot();
+  notes = notes.filter(n => n.id !== state.open); save();
+  state.open = null; showView(); scrollTo(0, scrollMem[state.view] || 0);
+  toast('Notitie verwijderd', { label: 'Ongedaan maken', fn: () => restore(snap) });
+});
+$('#back').addEventListener('click', closeEditor);
+
+function restore(snap) {
+  ({ folders, notes } = JSON.parse(snap)); save();
+  if (state.open && cur()) { renderLines(); updateTools(); fillFolderSel(); return; }
+  state.open = null;
+  if (state.view === 'folder' && !folderById(state.folder)) state.view = 'home';
+  showView();
+}
+
+/* ---------- onderblad ---------- */
+let sheetCb;
+function openSheet({ title, value = '', placeholder = 'Naam', ok, onOk }) {
+  $('#sheetTitle').textContent = title; $('#sheetOk').textContent = ok;
+  $('#sheetInput').value = value; $('#sheetInput').placeholder = placeholder;
+  $('#sheetErr').hidden = true; sheetCb = onOk;
+  $('#sheet').hidden = false; $('#sheetInput').focus();
+}
+const closeSheet = () => { $('#sheet').hidden = true; };
+$('#sheetForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#sheetInput').value.trim();
+  if (!v) { $('#sheetErr').hidden = false; return; }
+  closeSheet(); sheetCb(v);
+});
+$('#sheetInput').addEventListener('input', () => { $('#sheetErr').hidden = true; });
+$('#sheetCancel').addEventListener('click', closeSheet);
+$('#sheet').addEventListener('click', e => { if (e.target === e.currentTarget) closeSheet(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !$('#lockPad').hidden) return;
+  if (!$('#viewer').hidden) $('#viewer').hidden = true;
+  else if (!$('#confirm').hidden) $('#confirm').hidden = true;
+  else if (!$('#menu').hidden) $('#menu').hidden = true;
+  else if (!$('#sheet').hidden) closeSheet();
+  else if (state.open) closeEditor();
+  else if (state.view === 'folder') leaveFolder();
+  else if (state.view === 'vault') lockVault();
+});
+
+/* ---------- melding ---------- */
+let toastT;
+function toast(msg, act) {
+  const t = $('#toast');
+  t.innerHTML = `<span>${esc(msg)}</span>` + (act ? `<button type="button">${esc(act.label)}</button>` : '');
+  if (act) t.querySelector('button').onclick = () => { hideToast(); act.fn(); };
+  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(hideToast, 5000);
+}
+function hideToast() { $('#toast').hidden = true; }
+
+/* ---------- toetsenbord op gsm: balken boven het toetsenbord houden ---------- */
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const fit = () => document.documentElement.style.setProperty('--kb', Math.max(0, innerHeight - vv.height - vv.offsetTop) + 'px');
+  vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+}
+
+/* ---------- privé: geheime toegang door de + 5 seconden ingedrukt te houden ---------- */
+// Privénotities worden versleuteld bewaard (AES-GCM); de sleutel wordt afgeleid uit de pincode en nergens opgeslagen.
+const VKEY = 'kladje.vault';
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64 = buf => { let s = ''; new Uint8Array(buf).forEach(b => { s += String.fromCharCode(b); }); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+let vaultKey = null, vaultSalt = null;
+
+const hasVault = () => { try { return !!localStorage.getItem(VKEY); } catch (e) { return false; } };
+async function deriveKey(pin, salt) {
+  const base = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function sealVault() {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, vaultKey, enc.encode(JSON.stringify(notes.filter(n => n.private))));
+  try { localStorage.setItem(VKEY, JSON.stringify({ salt: b64(vaultSalt), iv: b64(iv), data: b64(data) })); } catch (e) {}
+}
+async function createVault(pin) {
+  vaultSalt = crypto.getRandomValues(new Uint8Array(16));
+  vaultKey = await deriveKey(pin, vaultSalt);
+  await sealVault();
+}
+async function openVault(pin) {
+  try {
+    const v = JSON.parse(localStorage.getItem(VKEY)), salt = unb64(v.salt);
+    const key = await deriveKey(pin, salt);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(v.iv) }, key, unb64(v.data));
+    vaultKey = key; vaultSalt = salt;
+    return JSON.parse(dec.decode(plain));
+  } catch (e) { return null; }
+}
+function enterVault(items) {
+  notes.push(...items.map(n => ({ ...n, private: true })));
+  scrollMem.home = scrollY; state.view = 'vault'; state.folder = null;
+  showView(); scrollTo(0, 0);
+}
+async function lockVault() {
+  if (!vaultKey) return;
+  clearTimeout(saveT);
+  const n = cur();
+  if (n && isEmpty(n)) notes = notes.filter(x => x !== n);
+  try { await sealVault(); } catch (e) {}
+  notes = notes.filter(x => !x.private); vaultKey = null; vaultSalt = null;
+  imgCache.forEach(u => URL.revokeObjectURL(u)); imgCache.clear();
+  $('#viewer').hidden = true; $('#viewerImg').removeAttribute('src');
+  state.open = null; state.view = 'home'; hideToast();
+  showView(); scrollTo(0, scrollMem.home);
+}
+function renderVault() {
+  const list = notes.filter(n => n.private).sort(byPinThenDate);
+  $('#vCount').textContent = list.length ? countOf(list) : 'Alleen jij ziet wat hier staat.';
+  $('#vaultFeed').innerHTML =
+    folderSection('Notities', list.filter(n => !isList(n)), 'text', 'Notitie', 'Nog geen privénotities. Tik om er een te schrijven.') +
+    folderSection('Lijstjes', list.filter(isList), 'todo', 'Lijstje', 'Nog geen privélijstjes. Tik om er een te maken.');
+  hydrate($('#vaultFeed'));
+}
+$('#vLock').addEventListener('click', lockVault);
+// Wie de app verlaat of naar een andere app wisselt, vergrendelt Privé meteen.
+document.addEventListener('visibilitychange', () => { if (document.hidden) lockVault(); });
+
+// Lang drukken op de +
+let longPressT, longPressFired = false;
+const plusBtn = $('#newNote');
+plusBtn.addEventListener('pointerdown', () => {
+  longPressFired = false; clearTimeout(longPressT);
+  if (state.view === 'vault') return;
+  longPressT = setTimeout(() => {
+    longPressFired = true;
+    try { navigator.vibrate && navigator.vibrate(30); } catch (e) {}
+    openPin();
+  }, 5000);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => plusBtn.addEventListener(ev, () => clearTimeout(longPressT)));
+plusBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+// Pinklavier
+let pinMode = null, pinBuf = '', pinFirst = '', pinTries = 0, pinBlockedUntil = 0, pinBusy = false;
+const PIN_TEXT = {
+  enter: ['Privé', 'Geef je pincode in.'],
+  set1: ['Kies een pincode', 'Kies 4 cijfers. Je hebt ze nodig om Privé te openen.'],
+  set2: ['Herhaal je pincode', 'Geef dezelfde 4 cijfers nog een keer in.'],
+};
+function openPin() {
+  if (!window.crypto || !crypto.subtle) { toast('Privé werkt hier niet: deze browser kan niet versleutelen.'); return; }
+  pinMode = hasVault() ? 'enter' : 'set1'; pinBuf = ''; pinFirst = '';
+  $('#capture').blur(); renderPin(); $('#lockPad').hidden = false;
+}
+function closePin() { $('#lockPad').hidden = true; pinBuf = ''; pinFirst = ''; pinBusy = false; }
+function renderPin(msg) {
+  const [title, text] = PIN_TEXT[pinMode];
+  $('#pinTitle').textContent = title; $('#pinText').textContent = text;
+  $('#pinErr').textContent = msg || '';
+  $('#dots').innerHTML = [0, 1, 2, 3].map(i => `<span class="dot${i < pinBuf.length ? ' on' : ''}"></span>`).join('');
+}
+function shake() { const d = $('#dots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake'); }
+async function pinPress(k) {
+  if (pinBusy) return;
+  if (k === 'del') { pinBuf = pinBuf.slice(0, -1); renderPin(); return; }
+  if (Date.now() < pinBlockedUntil) { renderPin('Te veel pogingen. Wacht even en probeer opnieuw.'); return; }
+  if (pinBuf.length >= 4) return;
+  pinBuf += k; renderPin();
+  if (pinBuf.length < 4) return;
+  const code = pinBuf;
+
+  if (pinMode === 'set1') {
+    pinFirst = code; pinBuf = ''; pinMode = 'set2';
+    setTimeout(() => renderPin(), 180);
+    return;
+  }
+  if (pinMode === 'set2') {
+    if (code !== pinFirst) {
+      pinMode = 'set1'; pinBuf = ''; pinFirst = ''; shake();
+      renderPin('De twee codes waren niet gelijk. Kies opnieuw.');
+      return;
+    }
+    pinBusy = true; $('#pinErr').textContent = 'Even geduld…';
+    await createVault(code);
+    closePin(); enterVault([]); toast('Pincode ingesteld');
+    return;
+  }
+  pinBusy = true; $('#pinErr').textContent = 'Even geduld…';
+  const items = await openVault(code);
+  pinBusy = false;
+  if (!items) {
+    pinBuf = ''; pinTries++; shake();
+    if (pinTries >= 5) { pinTries = 0; pinBlockedUntil = Date.now() + 30000; renderPin('Te veel pogingen. Wacht 30 seconden.'); }
+    else renderPin('Verkeerde pincode.');
+    return;
+  }
+  pinTries = 0; closePin(); enterVault(items);
+}
+$('#pad').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) pinPress(b.dataset.k); });
+$('#pinCancel').addEventListener('click', closePin);
+document.addEventListener('keydown', e => {
+  if ($('#lockPad').hidden) return;
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); pinPress(e.key); }
+  else if (e.key === 'Backspace') { e.preventDefault(); pinPress('del'); }
+  else if (e.key === 'Escape') closePin();
+});
+
+/* ---------- back-up: exporteren en importeren ---------- */
+// Het exportbestand bevat de gewone notities leesbaar, en Privé (tekst en foto's) nog altijd versleuteld met je pincode.
+const blobToDataUrl = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
+function dataUrlToBlob(u) {
+  const [head, body] = u.split(','), type = (head.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+  return new Blob([unb64(body)], { type });
+}
+async function readAllImages() {
+  const d = await db(), recs = [];
+  await new Promise((res, rej) => {
+    const req = d.transaction('img').objectStore('img').openCursor();
+    req.onsuccess = e => { const c = e.target.result; if (!c) return res(); recs.push([c.key, c.value]); c.continue(); };
+    req.onerror = () => rej(req.error);
+  });
+  const images = {};
+  for (const [k, v] of recs)
+    images[k] = v.enc ? { enc: true, iv: b64(v.iv), buf: b64(v.buf), type: v.type } : { data: await blobToDataUrl(v.blob) };
+  return images;
+}
+async function exportAll() {
+  try {
+    if (vaultKey) await sealVault();
+    let vault = null; try { vault = localStorage.getItem(VKEY); } catch (e) {}
+    const data = { app: 'kladje', format: 1, exported: new Date().toISOString(), folders, notes: notes.filter(n => !n.private), vault, images: await readAllImages() };
+    const name = `kladje-${new Date().toISOString().slice(0, 10)}.json`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    a.download = name; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    toast(`Bewaard als ${name}`);
+  } catch (e) { toast('Exporteren lukte niet. Probeer het opnieuw.'); }
+}
+let pendingImport = null;
+async function importAll(d) {
+  await lockVault();
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ folders: d.folders || [], notes: d.notes }));
+    if (d.vault) localStorage.setItem(VKEY, d.vault); else localStorage.removeItem(VKEY);
+  } catch (e) { toast('Importeren lukte niet: er is te weinig opslagruimte.'); return; }
+  try {
+    await idb('readwrite', s => s.clear());
+    for (const [k, v] of Object.entries(d.images || {})) {
+      const rec = v.enc ? { enc: true, iv: unb64(v.iv), buf: unb64(v.buf).buffer, type: v.type } : { blob: dataUrlToBlob(v.data) };
+      await idb('readwrite', s => s.put(rec, k));
+    }
+  } catch (e) { toast('De notities zijn teruggezet, maar niet alle foto’s.'); }
+  imgCache.forEach(u => URL.revokeObjectURL(u)); imgCache.clear();
+  ({ folders, notes } = load());
+  state.view = 'home'; state.folder = null; state.open = null;
+  showView(); scrollTo(0, 0);
+  toast('Kladje is teruggezet');
+}
+$('#menuBtn').addEventListener('click', () => { $('#menu').hidden = false; });
+$('#menuClose').addEventListener('click', () => { $('#menu').hidden = true; });
+$('#menu').addEventListener('click', e => { if (e.target === e.currentTarget) $('#menu').hidden = true; });
+$('#mExport').addEventListener('click', () => { $('#menu').hidden = true; exportAll(); });
+$('#mImport').addEventListener('click', () => $('#importIn').click());
+$('#importIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  let d;
+  try { d = JSON.parse(await f.text()); if (d.app !== 'kladje' || !Array.isArray(d.notes)) throw new Error(); }
+  catch (err) { toast('Dit is geen exportbestand van Kladje.'); return; }
+  pendingImport = d;
+  const when = d.exported ? new Date(d.exported).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }) : 'onbekende datum';
+  $('#confirmText').textContent = `Het bestand van ${when} bevat ${d.notes.length ? countOf(d.notes) : 'geen gewone notities'}${d.vault ? ' en een vergrendelde Privé' : ''}. Alles wat nu in Kladje staat, wordt vervangen.`;
+  $('#menu').hidden = true; $('#confirm').hidden = false;
+});
+$('#confirmNo').addEventListener('click', () => { pendingImport = null; $('#confirm').hidden = true; });
+$('#confirmYes').addEventListener('click', () => { const d = pendingImport; pendingImport = null; $('#confirm').hidden = true; if (d) importAll(d); });
+
+/* ---------- start ---------- */
+$('#menuBtn').innerHTML = ICON.dots;
+$('#mExportIco').innerHTML = ICON.download;
+$('#mImportIco').innerHTML = ICON.upload;
+$('#vLock').innerHTML = ICON.lock + '<span>Vergrendelen</span>';
+$('#pinIco').innerHTML = ICON.lock;
+$('#pinDel').innerHTML = ICON.erase;
+$('#searchBtn').innerHTML = ICON.search;
+$('#newNote').innerHTML = ICON.plus;
+$('#newList').innerHTML = ICON.list;
+$('#fBack').innerHTML = ICON.back + '<span>Kladje</span>';
+$('#fRename').innerHTML = ICON.pencil;
+$('#fDel').innerHTML = ICON.trash;
+$('#pin').innerHTML = ICON.pin;
+$('#del').innerHTML = ICON.trash;
+$('#fpickIcon').innerHTML = ICON.folder;
+$('#tTodo').innerHTML = ICON.box + '<span>Afvinkbaar</span>';
+$('#tPhoto').innerHTML = ICON.camera;
+$('#tReset').innerHTML = ICON.redo + '<span>Opnieuw</span>';
+$('#viewerClose').innerHTML = ICON.x;
+$('#today').textContent = fmt({ weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+notes.filter(n => !n.private).forEach(sinkDone);
+showView();
+cleanImages();
+setInterval(() => { if (!state.open && $('#sheet').hidden && !sw) rerender(); }, 60000);
+</script>
+
+<script>
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</html>
