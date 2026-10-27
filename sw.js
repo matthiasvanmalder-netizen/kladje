@@ -1,4 +1,4 @@
-const CACHE = 'kladje-20261027131750';
+const CACHE = 'kladje-20261027131815';
 const FONTS = 'kladje-fonts';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
